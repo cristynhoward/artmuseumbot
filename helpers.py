@@ -2,6 +2,7 @@
 """
 from secrets import *
 from os import path
+from time import strftime, gmtime
 import tweepy
 
 
@@ -20,8 +21,23 @@ def get_path_to(filename):
     :return: The full path to the file.
     :rtype: str
     """
-    dir = path.realpath(path.join(path.getcwd(), path.dirname(__file__)))
+    dir = path.realpath(path.dirname(__file__))
     return path.join(dir, filename)
+
+
+def log(message):
+    """ Log a message in the bot log file.
+
+    :param message: The message to be recorded.
+    :type message: str
+    :return: None
+    :rtype: None
+    """
+    print(message)
+    day = strftime("%d_%b_%Y", gmtime())
+    with open(get_path_to("logs/" + day + ".log"), 'a+') as f:
+        t = strftime("%d %b %Y %H:%M:%S", gmtime())
+        f.write("\n" + t + " " + message)
 
 
 def obj_desc(obj):
