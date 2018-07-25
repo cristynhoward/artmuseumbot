@@ -1,10 +1,11 @@
 """ First attempt to play around with art museum API.
 """
+from descriptions import obj_desc
 from secrets import *
 from helpers import *
-import tweepy
 import requests
 import random
+import tweepy
 
 
 def tweet_random_object():
@@ -15,14 +16,14 @@ def tweet_random_object():
     """
     log("Accessing HAM API.")
     url = 'https://api.harvardartmuseums.org/object?apikey=' + API_KEY \
-          + '&hasimage=1&size=1&sort=random&q=totalpageviews:' + str(random.randint(0,1000))
+          + '&hasimage=1&size=1&sort=random&q=totalpageviews:' + str(random.randint(0, 1000))
     object_page = requests.get(url)
     if object_page.status_code == 200:
         json = object_page.json()
 
         if json['info']['totalrecords'] > 0:  # If at least one object record returned...
             obj = json['records'][0]
-            if obj['imagecount'] > 0:  # If object record contains image...
+            if len(obj['images']) > 0:  # If object record contains image...
 
                 # Attempt to connect to image url...
                 imageurl = obj['images'][0]['baseimageurl']
@@ -39,9 +40,12 @@ def tweet_random_object():
                     # Tweet.
                     text = obj_desc(obj)
                     api = get_twitter_api()
-                    bot_tweet = api.update_with_media(imagefile, text)
-                    print(str(bot_tweet is not tweepy.TweepError))
-                    if bot_tweet is not tweepy.TweepError:
+                    try:
+                        bot_tweet = api.update_with_media(imagefile, text)
+                    except tweepy.error.TweepError as e:
+                        log('Encountered TweepError:' + e.response.text)
+                        return False
+                    else:
                         log('Tweeted: ' + text)
                         return bot_tweet
 
@@ -59,31 +63,22 @@ def tweet_random_object():
         return False
 
 
-def exhibition_exploration():
-    # Experimental exploration of exhibition API features.
-    exh_url = 'https://api.harvardartmuseums.org/exhibition?apikey=' + API_KEY + '&hasimage=1&size=1&sort=random'
-    exh_json = requests.get(exh_url).json()
-    exh = exh_json['records'][0]
-    print(exh_desc(exh))
+def attempt_to_tweet_object(total_attempts):
+    """ Attempt to tweet an archive object.
 
-    obj_url = 'https://api.harvardartmuseums.org/object?apikey=' + API_KEY \
-                  + '&hasimage=1&sort=random&exhibition=' + str(exh['id'])
-    obj_json = requests.get(obj_url).json()
-    for i in range(0, len(obj_json['records'])):
-        obj_info = obj_json['records'][i]
-        print(obj_desc(obj_info))
+    :param total_attempts: The total number of times to try to tweet.
+    :type total_attempts: int
+    :return: None
+    """
+    tweeted = False
+    attempts = total_attempts
 
-
-def artist_exploration():
-    # Experimental exploration of artist API features.
-    artist_url = 'https://api.harvardartmuseums.org/person?apikey=' + API_KEY + '&size=1&sort=random'
-    artist_json = requests.get(artist_url).json()
-    artist = artist_json['records'][0]
-    if artist['objectcount'] is not None and artist['objectcount'] > 4:
-        print(artist_desc(artist))
+    while tweeted is False and attempts > 0:
+        log('Tweet attempt #' + str(total_attempts - attempts + 1))
+        tweeted = tweet_random_object()
+        attempts -= 1
 
 
 if __name__ == '__main__':
-    tweeted = False
-    while tweeted is False:
-        tweeted = tweet_random_object()
+    attempt_to_tweet_object(10)
+
